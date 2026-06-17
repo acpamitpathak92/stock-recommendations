@@ -4,7 +4,8 @@ import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"
 import { z } from "zod";
 import { getOverview } from "../services/alphaVantage.js";
 import { getFinancials } from "../services/fmp.js";
-import { resolveSymbol, baseSymbol } from "../services/symbol.js";
+import { getYahooFundamentals } from "../services/yahoo.js";
+import { resolveSymbol, baseSymbol, yahooSymbol } from "../services/symbol.js";
 import { jsonResult } from "./util.js";
 import { createLogger } from "../utils/logger.js";
 
@@ -31,19 +32,26 @@ server.registerTool(
   async ({ symbol }) => {
     const resolved = resolveSymbol(symbol);
     const base = baseSymbol(symbol);
-    const [overview, fmp] = await Promise.all([getOverview(resolved), getFinancials(base)]);
+    // Yahoo's quoteSummary covers NSE/BSE fundamentals that FMP gates behind a
+    // paid plan, so it's the primary fundamentals source; Alpha Vantage OVERVIEW
+    // and FMP fill any remaining gaps (mainly for US names).
+    const [overview, yahoo, fmp] = await Promise.all([
+      getOverview(resolved),
+      getYahooFundamentals(yahooSymbol(symbol)),
+      getFinancials(base),
+    ]);
 
-    const available = Boolean(overview || fmp);
+    const available = Boolean(overview || yahoo || fmp);
     const data = {
       symbol: resolved,
-      revenueGrowth: pick(overview?.revenueGrowthYoY, fmp?.revenueGrowth),
-      profitGrowth: pick(overview?.earningsGrowthYoY, fmp?.profitGrowth),
-      debtToEquity: pick(fmp?.debtToEquity),
-      operatingCashFlow: pick(fmp?.operatingCashFlow),
-      roe: pick(overview?.roe, fmp?.roe),
+      revenueGrowth: pick(yahoo?.revenueGrowth, overview?.revenueGrowthYoY, fmp?.revenueGrowth),
+      profitGrowth: pick(yahoo?.profitGrowth, overview?.earningsGrowthYoY, fmp?.profitGrowth),
+      debtToEquity: pick(yahoo?.debtToEquity, fmp?.debtToEquity),
+      operatingCashFlow: pick(yahoo?.operatingCashFlow, fmp?.operatingCashFlow),
+      roe: pick(yahoo?.roe, overview?.roe, fmp?.roe),
       roce: pick(fmp?.roce),
-      netMargin: pick(overview?.profitMargin, fmp?.netMargin),
-      operatingMargin: pick(overview?.operatingMargin, fmp?.operatingMargin),
+      netMargin: pick(yahoo?.netMargin, overview?.profitMargin, fmp?.netMargin),
+      operatingMargin: pick(yahoo?.operatingMargin, overview?.operatingMargin, fmp?.operatingMargin),
       available,
     };
     log.info("getFinancialData", { symbol: resolved, available });

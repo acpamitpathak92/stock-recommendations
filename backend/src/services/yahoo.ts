@@ -7,7 +7,13 @@ const log = createLogger("yahoo");
 // The MCP servers speak JSON-RPC over stdio, so nothing may write to STDOUT.
 // yahoo-finance2 emits notices via its logger; route them to no-ops so the
 // protocol stream stays clean. (Our own diagnostics already go to stderr.)
-const silentLogger = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
+const silentLogger = {
+  info: () => {},
+  warn: () => {},
+  error: () => {},
+  debug: () => {},
+  dir: () => {},
+};
 const yf = new YahooFinance({ logger: silentLogger });
 
 // Yahoo Finance's public chart endpoint needs no API key and has strong NSE/BSE
@@ -167,6 +173,50 @@ export async function getYahooValuation(symbol: string): Promise<YahooValuation 
     return Object.values(v).some((x) => x !== null && x !== undefined) ? v : null;
   } catch (err) {
     log.warn("Yahoo valuation (quote) failed", { symbol, err: String(err).slice(0, 140) });
+    return null;
+  }
+}
+
+export interface YahooFundamentals {
+  debtToEquity: number | null;
+  roce: number | null;
+  operatingCashFlow: number | null;
+  roe: number | null;
+  netMargin: number | null;
+  operatingMargin: number | null;
+  revenueGrowth: number | null;
+  profitGrowth: number | null;
+}
+
+/**
+ * Deep fundamentals via Yahoo's quoteSummary (financialData module). This is the
+ * free, no-key replacement for FMP on NSE/BSE names — Yahoo covers Indian
+ * equities that FMP gates behind a paid plan. Margins/returns/growth come back
+ * as fractions (0.18 = 18%); debtToEquity is a percentage, normalised to a ratio
+ * to match the rest of the app. ROCE isn't exposed by Yahoo, so it stays null.
+ */
+export async function getYahooFundamentals(symbol: string): Promise<YahooFundamentals | null> {
+  try {
+    const summary = (await yf.quoteSummary(symbol, {
+      modules: ["financialData"],
+    })) as { financialData?: Record<string, unknown> } | undefined;
+    const fd = summary?.financialData;
+    if (!fd) return null;
+
+    const rawDe = num(fd["debtToEquity"]);
+    const out: YahooFundamentals = {
+      debtToEquity: rawDe !== null ? rawDe / 100 : null, // Yahoo reports a percentage
+      roce: null,
+      operatingCashFlow: num(fd["operatingCashflow"]),
+      roe: num(fd["returnOnEquity"]),
+      netMargin: num(fd["profitMargins"]),
+      operatingMargin: num(fd["operatingMargins"]),
+      revenueGrowth: num(fd["revenueGrowth"]),
+      profitGrowth: num(fd["earningsGrowth"]),
+    };
+    return Object.values(out).some((v) => v !== null) ? out : null;
+  } catch (err) {
+    log.warn("Yahoo fundamentals (quoteSummary) failed", { symbol, err: String(err).slice(0, 140) });
     return null;
   }
 }

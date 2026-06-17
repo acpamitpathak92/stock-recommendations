@@ -80,12 +80,12 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
       const market = (request.query.market ?? "in").toLowerCase();
       const limit = Math.min(Math.max(Number(request.query.limit ?? 5) || 5, 1), 10);
       // Only surface genuine buys. Overall >= 7 is the BUY band in the scorer.
-      const minScore = Number(request.query.minScore ?? 6.5);
+      const minScore = Number(request.query.minScore ?? 6);
 
       // Liquid large-cap universes to screen live. Indian names carry an explicit
       // ".NS" so they resolve through Yahoo regardless of India-mode config.
       const universes: Record<string, string[]> = {
-        in:[
+        in: [
   "RELIANCE.NS",
   "TCS.NS",
   "HDFCBANK.NS",
