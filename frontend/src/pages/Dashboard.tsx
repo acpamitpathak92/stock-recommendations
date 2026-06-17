@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { Button, Col, Row } from "antd";
+import { Button, Card, Col, Row } from "antd";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import type { AnalysisResult, Pick, RecommendedStock } from "../types";
 import SearchSection from "../components/SearchSection";
@@ -26,6 +26,8 @@ interface DashboardProps {
   picksAsOf: string | null;
   picksLoading: boolean;
   picksError: string | null;
+  picksRan: boolean;
+  picksScreened: number;
   onAnalyze: (symbol: string) => void;
   onLoadTopPicks: (market: "in" | "us") => void;
   onClearResult: () => void;
@@ -44,6 +46,8 @@ export default function Dashboard(props: DashboardProps) {
     picksAsOf,
     picksLoading,
     picksError,
+    picksRan,
+    picksScreened,
     onAnalyze,
     onLoadTopPicks,
     onClearResult,
@@ -119,12 +123,12 @@ export default function Dashboard(props: DashboardProps) {
           </div>
         ) : picksLoading ? (
           <AnalysisLoading symbol="the market" dark={dark} />
-        ) : hasPicks ? null : (
+        ) : hasPicks || picksRan ? null : (
           <EmptyState dark={dark} />
         )}
       </div>
 
-      {(hasPicks || picksError) && !result && (
+      {(hasPicks || picksError || picksRan) && !result && (
         <section style={{ marginTop: 28 }}>
           <div style={{ marginBottom: 14 }}>
             <div className="eyebrow" style={{ color: dark ? "#7E92B0" : "#73819A", marginBottom: 3 }}>
@@ -134,13 +138,27 @@ export default function Dashboard(props: DashboardProps) {
               className="display"
               style={{ fontFamily: FONTS.displayFont, fontWeight: 700, fontSize: 20, margin: 0, color: dark ? "#EAF0F8" : "#16203A" }}
             >
-              Top {picks.length || 5} to buy right now
+              {hasPicks ? `Top ${picks.length} to buy right now` : "Stocks to buy right now"}
             </h2>
           </div>
-          {picksError && !hasPicks ? (
+          {picksError ? (
             <ErrorState message={picksError} />
-          ) : (
+          ) : hasPicks ? (
             <TopPicks picks={picks} dark={dark} onOpenFull={handleAnalyze} />
+          ) : (
+            <Card styles={{ body: { padding: "40px 28px", textAlign: "center" } }}>
+              <div style={{ fontSize: 34, marginBottom: 10 }}>🛡️</div>
+              <div
+                className="display"
+                style={{ fontFamily: FONTS.displayFont, fontWeight: 700, fontSize: 18, color: dark ? "#EAF0F8" : "#16203A", marginBottom: 6 }}
+              >
+                No clear buys right now
+              </div>
+              <div style={{ fontSize: 14, lineHeight: 1.55, color: dark ? "#93A4BF" : "#54627B", maxWidth: 460, margin: "0 auto" }}>
+                Screened {picksScreened} stocks live — none currently clear the buy threshold (overall score ≥ 7).
+                The desk won't surface a "buy" it doesn't stand behind. Markets move; try again later, or switch markets above.
+              </div>
+            </Card>
           )}
         </section>
       )}

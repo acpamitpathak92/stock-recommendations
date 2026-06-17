@@ -26,6 +26,8 @@ export default function App() {
     picksAsOf,
     picksLoading,
     picksError,
+    picksRan,
+    picksScreened,
     analyze,
     loadTopPicks,
     reset,
@@ -59,6 +61,8 @@ export default function App() {
               picksAsOf={picksAsOf}
               picksLoading={picksLoading}
               picksError={picksError}
+              picksRan={picksRan}
+              picksScreened={picksScreened}
               onAnalyze={onAnalyze}
               onLoadTopPicks={loadTopPicks}
               onClearResult={reset}

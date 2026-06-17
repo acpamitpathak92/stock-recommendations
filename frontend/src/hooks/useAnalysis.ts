@@ -12,6 +12,8 @@ interface UseAnalysis {
   picksAsOf: string | null;
   picksLoading: boolean;
   picksError: string | null;
+  picksRan: boolean;
+  picksScreened: number;
   analyze: (symbol: string) => Promise<void>;
   loadTopPicks: (market: "in" | "us") => Promise<void>;
   showResult: (result: AnalysisResult) => void;
@@ -29,6 +31,8 @@ export function useAnalysis(): UseAnalysis {
   const [picksAsOf, setPicksAsOf] = useState<string | null>(null);
   const [picksLoading, setPicksLoading] = useState(false);
   const [picksError, setPicksError] = useState<string | null>(null);
+  const [picksRan, setPicksRan] = useState(false);
+  const [picksScreened, setPicksScreened] = useState(0);
 
   const reloadRecommended = useCallback(async () => {
     setRecommendedLoading(true);
@@ -66,18 +70,19 @@ export function useAnalysis(): UseAnalysis {
     async (market: "in" | "us") => {
       setPicksLoading(true);
       setPicksError(null);
+      setPicksRan(false);
       setResult(null);
       try {
         const data = await fetchTopPicks(market);
         setPicks(data.picks);
         setPicksAsOf(data.asOf);
-        if (data.picks.length === 0) {
-          setPicksError("The screen returned no ranked stocks. Check the backend logs.");
-        }
+        setPicksScreened(data.screened);
+        setPicksRan(true);
         void reloadRecommended();
       } catch (err) {
         setPicksError(err instanceof Error ? err.message : "Failed to screen for top picks.");
         setPicks([]);
+        setPicksRan(false);
       } finally {
         setPicksLoading(false);
       }
@@ -109,6 +114,8 @@ export function useAnalysis(): UseAnalysis {
     picksAsOf,
     picksLoading,
     picksError,
+    picksRan,
+    picksScreened,
     analyze,
     loadTopPicks,
     showResult,

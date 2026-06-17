@@ -76,17 +76,118 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
 
   app.get(
     "/api/top-picks",
-    async (request: FastifyRequest<{ Querystring: { market?: string; limit?: string } }>, reply) => {
+    async (request: FastifyRequest<{ Querystring: { market?: string; limit?: string; minScore?: string } }>, reply) => {
       const market = (request.query.market ?? "in").toLowerCase();
       const limit = Math.min(Math.max(Number(request.query.limit ?? 5) || 5, 1), 10);
+      // Only surface genuine buys. Overall >= 7 is the BUY band in the scorer.
+      const minScore = Number(request.query.minScore ?? 6.5);
 
       // Liquid large-cap universes to screen live. Indian names carry an explicit
       // ".NS" so they resolve through Yahoo regardless of India-mode config.
       const universes: Record<string, string[]> = {
-        in: [
-          "RELIANCE.NS", "TCS.NS", "HDFCBANK.NS", "INFY.NS", "ICICIBANK.NS",
-          "SBIN.NS", "BHARTIARTL.NS", "ITC.NS", "LT.NS", "AXISBANK.NS",
-        ],
+        in:[
+  "RELIANCE.NS",
+  "TCS.NS",
+  "HDFCBANK.NS",
+  "INFY.NS",
+  "ICICIBANK.NS",
+  "SBIN.NS",
+  "BHARTIARTL.NS",
+  "ITC.NS",
+  "LT.NS",
+  "AXISBANK.NS",
+  "KOTAKBANK.NS",
+  "HCLTECH.NS",
+  "SUNPHARMA.NS",
+  "MARUTI.NS",
+  "BAJFINANCE.NS",
+  "ULTRACEMCO.NS",
+  "NTPC.NS",
+  "TITAN.NS",
+  "ONGC.NS",
+  "WIPRO.NS",
+  "POWERGRID.NS",
+  "ADANIENT.NS",
+  "ADANIPORTS.NS",
+  "ASIANPAINT.NS",
+  "NESTLEIND.NS",
+  "TATAMOTORS.NS",
+  "M&M.NS",
+  "BAJAJFINSV.NS",
+  "COALINDIA.NS",
+  "HINDUNILVR.NS",
+  "GRASIM.NS",
+  "JSWSTEEL.NS",
+  "TATASTEEL.NS",
+  "INDUSINDBK.NS",
+  "CIPLA.NS",
+  "DRREDDY.NS",
+  "EICHERMOT.NS",
+  "HEROMOTOCO.NS",
+  "APOLLOHOSP.NS",
+  "BPCL.NS",
+  "SHRIRAMFIN.NS",
+  "TRENT.NS",
+  "BEL.NS",
+  "HAL.NS",
+  "SIEMENS.NS",
+  "DIXON.NS",
+  "BSE.NS",
+  "INDIGO.NS",
+  "DLF.NS",
+  "VEDL.NS",
+  "PIDILITIND.NS",
+  "GODREJCP.NS",
+  "HAVELLS.NS",
+  "ABB.NS",
+  "BANKBARODA.NS",
+  "CANBK.NS",
+  "PNB.NS",
+  "UNIONBANK.NS",
+  "PFC.NS",
+  "RECLTD.NS",
+  "IRFC.NS",
+  "NHPC.NS",
+  "IOC.NS",
+  "GAIL.NS",
+  "HINDALCO.NS",
+  "AMBUJACEM.NS",
+  "ACC.NS",
+  "TORNTPHARM.NS",
+  "LUPIN.NS",
+  "ZYDUSLIFE.NS",
+  "TVSMOTOR.NS",
+  "ASHOKLEY.NS",
+  "AUBANK.NS",
+  "SBILIFE.NS",
+  "HDFCLIFE.NS",
+  "LICI.NS",
+  "MAXHEALTH.NS",
+  "FORTIS.NS",
+  "POLYCAB.NS",
+  "KEI.NS",
+  "CGPOWER.NS",
+  "SUPREMEIND.NS",
+  "PAGEIND.NS",
+  "BERGEPAINT.NS",
+  "COLPAL.NS",
+  "DABUR.NS",
+  "MARICO.NS",
+  "TATAPOWER.NS",
+  "ADANIPOWER.NS",
+  "MOTHERSON.NS",
+  "BALKRISIND.NS",
+  "MPHASIS.NS",
+  "PERSISTENT.NS",
+  "COFORGE.NS",
+  "LTIM.NS",
+  "TECHM.NS",
+  "NAUKRI.NS",
+  "INDHOTEL.NS",
+  "CONCOR.NS",
+  "BIOCON.NS",
+  "ESCORTS.NS"
+],
         us: [
           "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN",
           "META", "AVGO", "JPM", "V", "XOM",
@@ -102,12 +203,17 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           analyzeStock(sym, { skipNarrative: true }),
         );
 
-        // Rank: best "buy now" first — by overall score, then confidence.
+        // Rank by score, then confidence...
         const ranked = screened
           .slice()
           .sort((a, b) => b.overallScore - a.overallScore || b.confidence - a.confidence);
 
-        const picks = ranked.slice(0, limit).map((r, i) => ({ rank: i + 1, ...r }));
+        // ...but only return stocks that actually clear the buy threshold.
+        const picks = ranked
+          .filter((r) => r.overallScore >= minScore && r.recommendation !== "AVOID")
+          .slice(0, limit)
+          .map((r, i) => ({ rank: i + 1, ...r }));
+
         const board = ranked.map((r) => ({
           symbol: r.resolvedSymbol,
           score: r.overallScore,
@@ -119,6 +225,8 @@ export async function registerRoutes(app: FastifyInstance): Promise<void> {
           asOf: new Date().toISOString(),
           screened: screened.length,
           universeSize: universe.length,
+          minScore,
+          qualified: picks.length,
           picks,
           board,
         });

@@ -150,6 +150,8 @@ export interface TopPicksResponse {
   asOf: string;
   screened: number;
   universeSize: number;
+  minScore: number;
+  qualified: number;
   picks: Pick[];
   board: { symbol: string; score: number; recommendation: Recommendation }[];
 }

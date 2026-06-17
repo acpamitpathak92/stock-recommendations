@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Input, Button, Space, Tag, Segmented } from "antd";
-import { SearchOutlined, ThunderboltFilled, AppstoreOutlined } from "@ant-design/icons";
+import { SearchOutlined, ThunderboltFilled, StarFilled } from "@ant-design/icons";
 import { FONTS } from "../theme/theme";
 
 interface SearchSectionProps {
@@ -85,7 +85,36 @@ export default function SearchSection({
         </Button>
       </Space.Compact>
 
-      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+      <div
+        style={{
+          marginTop: 18,
+          padding: 16,
+          borderRadius: 14,
+          border: `1px solid ${dark ? "#1C3A3C" : "#CDEBEA"}`,
+          background: dark ? "#0C2024" : "#F0FBFA",
+          display: "flex",
+          alignItems: "center",
+          gap: 14,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: "1 1 260px" }}>
+          <div
+            className="display"
+            style={{
+              fontFamily: FONTS.displayFont,
+              fontWeight: 700,
+              fontSize: 17,
+              color: dark ? "#EAF0F8" : "#0B1220",
+              marginBottom: 2,
+            }}
+          >
+            Not sure what to buy?
+          </div>
+          <div style={{ fontSize: 13, color: dark ? "#9FC7C5" : "#3E6E6C" }}>
+            Screens {market === "in" ? "Indian" : "US"} large-caps live and ranks the 5 best buys as of now.
+          </div>
+        </div>
         <Segmented
           value={market}
           onChange={(v) => setMarket(v as "in" | "us")}
@@ -96,16 +125,16 @@ export default function SearchSection({
           ]}
         />
         <Button
-          icon={<AppstoreOutlined />}
+          size="large"
+          type="primary"
+          icon={<StarFilled />}
           loading={picksLoading}
           disabled={loading}
           onClick={() => onLoadTopPicks(market)}
+          style={{ fontWeight: 600 }}
         >
-          {picksLoading ? "Screening the market…" : "Top 5 to buy right now"}
+          {picksLoading ? "Screening the market…" : "Top 5 stocks to buy now"}
         </Button>
-        <span style={{ fontSize: 12.5, color: dark ? "#6B7C97" : "#7A879C" }}>
-          Screens {market === "in" ? "Indian" : "US"} large-caps live and ranks the 5 best buys as of now.
-        </span>
       </div>
 
       <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
